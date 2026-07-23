@@ -4,6 +4,7 @@ const pedidosController = require("../controllers/pedidosController");
 const { proteger, admin } = require("../middlewares/auth");
 
 router.post("/crear", proteger, pedidosController.crearPedido);
+router.post("/crear-sin-auth", pedidosController.crearPedidoSinAuth);
 router.get("/usuario", proteger, pedidosController.obtenerPedidosUsuario);
 router.get("/admin", proteger, admin, pedidosController.obtenerPedidosAdmin);
 router.get("/admin/detalles", proteger, admin, pedidosController.obtenerPedidosProductosAdmin);

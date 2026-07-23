@@ -17,14 +17,15 @@ function Carrito() {
     } = useContext(CarritoContext);
 
     const [direccion, setDireccion] = useState("");
-    const [correoConfirmacion, setCorreoConfirmacion] = useState(() => {
+    const [nombreCliente, setNombreCliente] = useState(() => {
         try {
             const usuario = JSON.parse(localStorage.getItem("usuario") || "null");
-            return usuario?.correo || "";
+            return usuario?.nombre || "";
         } catch {
             return "";
         }
     });
+    const [correoConfirmacion, setCorreoConfirmacion] = useState("");
     const [mensaje, setMensaje] = useState("");
     const [procesando, setProcesando] = useState(false);
     const [confirmarCorreo, setConfirmarCorreo] = useState(false);
@@ -32,12 +33,6 @@ function Carrito() {
 
     const finalizarCompra = async () => {
         if (procesando) {
-            return;
-        }
-
-        const token = localStorage.getItem("token");
-        if (!token) {
-            setMensaje("Debes iniciar sesión para finalizar la compra.");
             return;
         }
 
@@ -60,11 +55,12 @@ function Carrito() {
             setProcesando(true);
             setMensaje("");
             setResumenCompra(null);
-            const respuesta = await api.post("/pedidos/crear", {
+            const respuesta = await api.post("/pedidos/crear-sin-auth", {
                 items: carrito,
                 total,
                 direccion: direccion || "Recoger en tienda",
-                correoConfirmacion: correoConfirmacion.trim()
+                correoConfirmacion: correoConfirmacion.trim(),
+                nombreCliente: nombreCliente.trim() || "Cliente"
             });
             const pedidoId = Number(respuesta.data?.pedidoId || 0);
             const totalCompra = Number(respuesta.data?.total || total);
@@ -80,18 +76,20 @@ function Carrito() {
 
             vaciarCarrito();
             setDireccion("");
+            setNombreCliente("");
+            setCorreoConfirmacion("");
             setConfirmarCorreo(false);
             const textoPedido = pedidoId > 0 ? ` Pedido #${pedidoId}.` : "";
             if (correoEnviado) {
-                setMensaje(`Compra realizada con éxito.${textoPedido} Te enviamos un correo de confirmación.`);
+                setMensaje(`¡Compra realizada con éxito!${textoPedido} Te enviamos un correo de confirmación.`);
             } else {
-                setMensaje(`Compra realizada con éxito.${textoPedido} No fue posible enviar el correo de confirmación.`);
+                setMensaje(`¡Compra realizada con éxito!${textoPedido} No fue posible enviar el correo de confirmación.`);
             }
         } catch (error) {
             console.error(error);
             const mensajeApi = error?.response?.data?.mensaje;
             setResumenCompra(null);
-            setMensaje(mensajeApi || "Error al procesar el pedido. Inicia sesión y vuelve a intentarlo.");
+            setMensaje(mensajeApi || "Error al procesar el pedido. Por favor, intenta nuevamente.");
         } finally {
             setProcesando(false);
         }
@@ -186,6 +184,15 @@ function Carrito() {
                             </table>
                             <div className="checkout-form">
                                 <label>
+                                    Nombre completo:
+                                    <input
+                                        type="text"
+                                        value={nombreCliente}
+                                        placeholder="Tu nombre completo"
+                                        onChange={(e) => setNombreCliente(e.target.value)}
+                                    />
+                                </label>
+                                <label>
                                     Correo electrónico para confirmación:
                                     <input
                                         type="email"
@@ -206,6 +213,7 @@ function Carrito() {
 
                                 <div className="checkout-summary" role="status" aria-live="polite">
                                     <h3>Resumen de confirmación</h3>
+                                    <p><strong>Nombre:</strong> {nombreCliente || "Pendiente por ingresar"}</p>
                                     <p><strong>Correo destino:</strong> {correoConfirmacion || "Pendiente por ingresar"}</p>
                                     <p><strong>Productos totales:</strong> {cantidadProductos}</p>
                                     <p><strong>Monto a pagar:</strong> ${total.toFixed(2)}</p>
@@ -217,7 +225,7 @@ function Carrito() {
                                         checked={confirmarCorreo}
                                         onChange={(e) => setConfirmarCorreo(e.target.checked)}
                                     />
-                                    Confirmo que mi correo es correcto y recibiré ahí el resumen de compra.
+                                    Confirmo que mis datos son correctos y recibiré el resumen de compra en mi correo.
                                 </label>
                             </div>
                             <div className="cart-total">

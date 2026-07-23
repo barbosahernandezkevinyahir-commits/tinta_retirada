@@ -234,7 +234,23 @@ function Dashboard() {
                 codigo: String(codigo).trim().toUpperCase()
             });
             setMensaje("Tipos de datos de producto actualizados.");
-            cargarDashboard();
+            
+            // Actualizar el producto en la lista local inmediatamente
+            setProductos(productos.map(p => 
+                p.id === producto.id 
+                    ? {
+                        ...p,
+                        prioridad: Number(prioridad),
+                        peso: Number(peso),
+                        codigo: String(codigo).trim().toUpperCase()
+                    }
+                    : p
+            ));
+            
+            // Luego recargar desde el servidor después de 500ms
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
         } catch (error) {
             setMensaje(error?.response?.data?.mensaje || "No se pudo actualizar el producto.");
         }
@@ -255,7 +271,23 @@ function Dashboard() {
                 etiqueta_char: String(etiqueta).trim().toUpperCase()
             });
             setMensaje("Tipos de datos de usuario actualizados.");
-            cargarDashboard();
+            
+            // Actualizar el usuario en la lista local inmediatamente
+            setUsuarios(usuarios.map(u => 
+                u.id === usuario.id 
+                    ? {
+                        ...u,
+                        nivel_int: Number(nivel),
+                        credito_float: Number(credito),
+                        etiqueta_char: String(etiqueta).trim().toUpperCase()
+                    }
+                    : u
+            ));
+            
+            // Luego recargar desde el servidor después de 500ms
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
         } catch (error) {
             setMensaje(error?.response?.data?.mensaje || "No se pudo actualizar el usuario.");
         }
@@ -276,7 +308,23 @@ function Dashboard() {
                 codigo_char: String(codigo).trim().toUpperCase()
             });
             setMensaje("Tipos de datos de categoría actualizados.");
-            cargarDashboard();
+            
+            // Actualizar la categoría en la lista local inmediatamente
+            setCategorias(categorias.map(c => 
+                c.id === categoria.id 
+                    ? {
+                        ...c,
+                        orden_int: Number(orden),
+                        factor_float: Number(factor),
+                        codigo_char: String(codigo).trim().toUpperCase()
+                    }
+                    : c
+            ));
+            
+            // Luego recargar desde el servidor después de 500ms
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
         } catch (error) {
             setMensaje(error?.response?.data?.mensaje || "No se pudo actualizar la categoría.");
         }
@@ -297,7 +345,23 @@ function Dashboard() {
                 canal_char: String(canal).trim().toUpperCase()
             });
             setMensaje("Tipos de datos de pedido actualizados.");
-            cargarDashboard();
+            
+            // Actualizar el pedido en la lista local inmediatamente
+            setPedidos(pedidos.map(p => 
+                p.id === pedido.id 
+                    ? {
+                        ...p,
+                        prioridad_int: Number(prioridad),
+                        recargo_float: Number(recargo),
+                        canal_char: String(canal).trim().toUpperCase()
+                    }
+                    : p
+            ));
+            
+            // Luego recargar desde el servidor después de 500ms
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
         } catch (error) {
             setMensaje(error?.response?.data?.mensaje || "No se pudo actualizar el pedido.");
         }
@@ -318,7 +382,23 @@ function Dashboard() {
                 marca_char: String(marca).trim().toUpperCase()
             });
             setMensaje("Tipos de datos del detalle actualizados.");
-            cargarDashboard();
+            
+            // Actualizar el detalle en la lista local inmediatamente
+            setDetallesPedidos(detallesPedidos.map(d => 
+                d.id === detalle.id 
+                    ? {
+                        ...d,
+                        lote_int: Number(lote),
+                        impuesto_float: Number(impuesto),
+                        marca_char: String(marca).trim().toUpperCase()
+                    }
+                    : d
+            ));
+            
+            // Luego recargar desde el servidor después de 500ms
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
         } catch (error) {
             setMensaje(error?.response?.data?.mensaje || "No se pudo actualizar el detalle del pedido.");
         }
@@ -344,7 +424,25 @@ function Dashboard() {
                 correo_enviado: correoEnviado
             });
             setMensaje("Compra actualizada correctamente.");
-            cargarDashboard();
+            
+            // Actualizar la compra en la lista local inmediatamente
+            setCompras(compras.map(c => 
+                c.id === compra.id 
+                    ? {
+                        ...c,
+                        correo: String(correo).trim(),
+                        direccion: String(direccion).trim(),
+                        total: Number(total),
+                        estado: String(estado).trim(),
+                        correo_enviado: correoEnviado ? 1 : 0
+                    }
+                    : c
+            ));
+            
+            // Luego recargar desde el servidor después de 500ms
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
         } catch (error) {
             setMensaje(error?.response?.data?.mensaje || "No se pudo actualizar la compra.");
         }
@@ -357,9 +455,106 @@ function Dashboard() {
         try {
             await api.delete(`/pedidos/admin/compras/${compra.id}`);
             setMensaje("Compra eliminada correctamente.");
-            cargarDashboard();
+            
+            // Eliminar la compra de la lista local inmediatamente
+            setCompras(compras.filter(c => c.id !== compra.id));
+            
+            // Luego recargar desde el servidor después de 500ms
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
         } catch (error) {
             setMensaje(error?.response?.data?.mensaje || "No se pudo eliminar la compra.");
+        }
+    };
+
+    const eliminarProducto = async (producto) => {
+        const confirmar = window.confirm(`¿Eliminar el producto "${producto.nombre}"? Esta acción es irreversible.`);
+        if (!confirmar) return;
+
+        try {
+            await api.delete(`/productos/${producto.id}`);
+            setMensaje("Producto eliminado correctamente.");
+            
+            setProductos(productos.filter(p => p.id !== producto.id));
+            
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
+        } catch (error) {
+            setMensaje(error?.response?.data?.mensaje || "No se pudo eliminar el producto.");
+        }
+    };
+
+    const eliminarUsuario = async (usuario) => {
+        const confirmar = window.confirm(`¿Eliminar el usuario "${usuario.nombre}"? Esta acción es irreversible.`);
+        if (!confirmar) return;
+
+        try {
+            await api.delete(`/auth/usuarios/${usuario.id}`);
+            setMensaje("Usuario eliminado correctamente.");
+            
+            setUsuarios(usuarios.filter(u => u.id !== usuario.id));
+            
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
+        } catch (error) {
+            setMensaje(error?.response?.data?.mensaje || "No se pudo eliminar el usuario.");
+        }
+    };
+
+    const eliminarCategoria = async (categoria) => {
+        const confirmar = window.confirm(`¿Eliminar la categoría "${categoria.nombre}"? Esta acción es irreversible.`);
+        if (!confirmar) return;
+
+        try {
+            await api.delete(`/productos/categorias/${categoria.id}`);
+            setMensaje("Categoría eliminada correctamente.");
+            
+            setCategorias(categorias.filter(c => c.id !== categoria.id));
+            
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
+        } catch (error) {
+            setMensaje(error?.response?.data?.mensaje || "No se pudo eliminar la categoría.");
+        }
+    };
+
+    const eliminarPedido = async (pedido) => {
+        const confirmar = window.confirm(`¿Eliminar el pedido #${pedido.id}? Esta acción es irreversible.`);
+        if (!confirmar) return;
+
+        try {
+            await api.delete(`/pedidos/admin/${pedido.id}`);
+            setMensaje("Pedido eliminado correctamente.");
+            
+            setPedidos(pedidos.filter(p => p.id !== pedido.id));
+            
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
+        } catch (error) {
+            setMensaje(error?.response?.data?.mensaje || "No se pudo eliminar el pedido.");
+        }
+    };
+
+    const eliminarDetalle = async (detalle) => {
+        const confirmar = window.confirm(`¿Eliminar el detalle del pedido #${detalle.id}? Esta acción es irreversible.`);
+        if (!confirmar) return;
+
+        try {
+            await api.delete(`/pedidos/admin/detalles/${detalle.id}`);
+            setMensaje("Detalle eliminado correctamente.");
+            
+            setDetallesPedidos(detallesPedidos.filter(d => d.id !== detalle.id));
+            
+            setTimeout(() => {
+                cargarDashboard();
+            }, 500);
+        } catch (error) {
+            setMensaje(error?.response?.data?.mensaje || "No se pudo eliminar el detalle.");
         }
     };
 
@@ -509,7 +704,7 @@ function Dashboard() {
                                             <th>Recargo FLOAT</th>
                                             <th>Canal CHAR</th>
                                             <th>Fecha</th>
-                                            <th>Acción</th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -523,7 +718,10 @@ function Dashboard() {
                                                 <td>{Number(pedido.recargo_float || 0).toFixed(2)}</td>
                                                 <td>{pedido.canal_char || "WEB"}</td>
                                                 <td>{new Date(pedido.fecha_pedido || pedido.created_at || pedido.fecha).toLocaleString()}</td>
-                                                <td><button className="button-secondary" onClick={() => editarTiposPedido(pedido)}>Editar tipos</button></td>
+                                                <td>
+                                                    <button className="button-secondary" onClick={() => editarTiposPedido(pedido)}>Editar</button>
+                                                    <button className="button-danger" onClick={() => eliminarPedido(pedido)}>Eliminar</button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -542,7 +740,7 @@ function Dashboard() {
                                             <th>Prioridad INT</th>
                                             <th>Peso FLOAT</th>
                                             <th>Código CHAR</th>
-                                            <th>Acción</th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -556,7 +754,10 @@ function Dashboard() {
                                                 <td>{Number(producto.prioridad || 0)}</td>
                                                 <td>{Number(producto.peso || 0).toFixed(2)}</td>
                                                 <td>{producto.codigo || "SIN-CODIGO"}</td>
-                                                <td><button className="button-secondary" onClick={() => editarTiposProducto(producto)}>Editar tipos</button></td>
+                                                <td>
+                                                    <button className="button-secondary" onClick={() => editarTiposProducto(producto)}>Editar</button>
+                                                    <button className="button-danger" onClick={() => eliminarProducto(producto)}>Eliminar</button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -575,7 +776,7 @@ function Dashboard() {
                                             <th>Crédito FLOAT</th>
                                             <th>Etiqueta CHAR</th>
                                             <th>Registro</th>
-                                            <th>Acción</th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -589,7 +790,10 @@ function Dashboard() {
                                                 <td>{Number(usuario.credito_float || 0).toFixed(2)}</td>
                                                 <td>{usuario.etiqueta_char || "USR-BASE"}</td>
                                                 <td>{usuario.created_at ? new Date(usuario.created_at).toLocaleString() : "Sin fecha"}</td>
-                                                <td><button className="button-secondary" onClick={() => editarTiposUsuario(usuario)}>Editar tipos</button></td>
+                                                <td>
+                                                    <button className="button-secondary" onClick={() => editarTiposUsuario(usuario)}>Editar</button>
+                                                    <button className="button-danger" onClick={() => eliminarUsuario(usuario)}>Eliminar</button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -605,7 +809,7 @@ function Dashboard() {
                                             <th>Orden INT</th>
                                             <th>Factor FLOAT</th>
                                             <th>Código CHAR</th>
-                                            <th>Acción</th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -616,7 +820,10 @@ function Dashboard() {
                                                 <td>{Number(categoria.orden_int || 0)}</td>
                                                 <td>{Number(categoria.factor_float || 0).toFixed(2)}</td>
                                                 <td>{categoria.codigo_char || "CAT-BASE"}</td>
-                                                <td><button className="button-secondary" onClick={() => editarTiposCategoria(categoria)}>Editar tipos</button></td>
+                                                <td>
+                                                    <button className="button-secondary" onClick={() => editarTiposCategoria(categoria)}>Editar</button>
+                                                    <button className="button-danger" onClick={() => eliminarCategoria(categoria)}>Eliminar</button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -636,7 +843,7 @@ function Dashboard() {
                                             <th>Marca CHAR</th>
                                             <th>Timestamp</th>
                                             <th>Actualizado</th>
-                                            <th>Acción</th>
+                                            <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -651,7 +858,10 @@ function Dashboard() {
                                                 <td>{detalle.marca_char || "PP-BASE"}</td>
                                                 <td>{detalle.created_at ? new Date(detalle.created_at).toLocaleString() : "Sin fecha"}</td>
                                                 <td>{detalle.updated_at ? new Date(detalle.updated_at).toLocaleString() : "Sin fecha"}</td>
-                                                <td><button className="button-secondary" onClick={() => editarTiposDetalle(detalle)}>Editar tipos</button></td>
+                                                <td>
+                                                    <button className="button-secondary" onClick={() => editarTiposDetalle(detalle)}>Editar</button>
+                                                    <button className="button-danger" onClick={() => eliminarDetalle(detalle)}>Eliminar</button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
