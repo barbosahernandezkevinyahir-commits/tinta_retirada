@@ -630,6 +630,18 @@ exports.eliminarPedidoAdmin = (req, res) => {
     });
 };
 
+exports.eliminarDetallePedidoAdmin = (req, res) => {
+    const detalleId = Number(req.params.id);
+    if (!Number.isFinite(detalleId) || detalleId <= 0) {
+        return res.status(400).json({ mensaje: "ID de detalle no válido." });
+    }
+    conexion.query("DELETE FROM pedidos_productos WHERE id = ?", [detalleId], (error, resultado) => {
+        if (error) return res.status(500).json(error);
+        if (resultado.affectedRows === 0) return res.status(404).json({ mensaje: "Detalle no encontrado." });
+        res.json({ mensaje: "Detalle eliminado correctamente." });
+    });
+};
+
 exports.obtenerEstadisticas = (req, res) => {
     const consultas = {
         totalProductos: "SELECT COUNT(*) AS total FROM productos",

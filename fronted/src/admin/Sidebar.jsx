@@ -1,4 +1,3 @@
-import { Link, NavLink } from "react-router-dom";
 import "../styles/admin.css";
 
 function Sidebar() {
@@ -13,29 +12,8 @@ function Sidebar() {
             </div>
 
             <nav className="sidebar-nav">
-                <NavLink to="/admin" end className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}>
-                    🏠 Dashboard
-                </NavLink>
-                <NavLink to="/admin/productos" className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}>
-                    📦 Productos
-                </NavLink>
-                <NavLink to="/admin/agregar" className={({ isActive }) => `sidebar-link sidebar-cta ${isActive ? "is-active" : ""}`}>
-                    ➕ Agregar producto
-                </NavLink>
-                <NavLink to="/admin/clientes" className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}>
-                    👥 Clientes
-                </NavLink>
-                <NavLink to="/admin/pedidos" className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}>
-                    📋 Pedidos
-                </NavLink>
-                <NavLink to="/admin/estadisticas" className={({ isActive }) => `sidebar-link ${isActive ? "is-active" : ""}`}>
-                    📊 Estadísticas
-                </NavLink>
+                <span className="sidebar-link is-active">🏠 Dashboard</span>
             </nav>
-
-            <div className="sidebar-footer">
-                <Link to="/">🛍️ Volver a la tienda</Link>
-            </div>
         </aside>
     );
 }

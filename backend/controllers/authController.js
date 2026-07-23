@@ -273,3 +273,51 @@ exports.cambiarContrasena = async (req, res) => {
         res.status(400).json({ mensaje: "Token inválido o expirado." });
     }
 };
+
+exports.eliminarUsuario = (req, res) => {
+    const { id } = req.params;
+    conexion.query("DELETE FROM usuarios WHERE id = ?", [id], (error) => {
+        if (error) return res.status(500).json(error);
+        res.json({ mensaje: "Usuario eliminado correctamente." });
+    });
+};
+
+exports.crearUsuario = async (req, res) => {
+    const { nombre, correo, password, rol } = req.body;
+    if (!nombre || !correo || !password) {
+        return res.status(400).json({ mensaje: "Nombre, correo y contraseña son obligatorios." });
+    }
+    try {
+        conexion.query("SELECT id FROM usuarios WHERE correo = ?", [correo], async (error, resultado) => {
+            if (error) return res.status(500).json(error);
+            if (resultado.length > 0) return res.status(400).json({ mensaje: "El correo ya está registrado." });
+            const hash = await bcrypt.hash(password, 10);
+            conexion.query(
+                "INSERT INTO usuarios (nombre, correo, password, rol) VALUES (?, ?, ?, ?)",
+                [nombre, correo, hash, rol || "user"],
+                (err, result) => {
+                    if (err) return res.status(500).json(err);
+                    res.status(201).json({ mensaje: "Usuario creado correctamente.", id: result.insertId });
+                }
+            );
+        });
+    } catch (error) {
+        res.status(500).json({ mensaje: "Error interno del servidor." });
+    }
+};
+
+exports.actualizarUsuario = (req, res) => {
+    const { id } = req.params;
+    const { nombre, correo, rol } = req.body;
+    if (!nombre || !correo) {
+        return res.status(400).json({ mensaje: "Nombre y correo son obligatorios." });
+    }
+    conexion.query(
+        "UPDATE usuarios SET nombre = ?, correo = ?, rol = ? WHERE id = ?",
+        [nombre, correo, rol || "user", id],
+        (error) => {
+            if (error) return res.status(500).json(error);
+            res.json({ mensaje: "Usuario actualizado correctamente." });
+        }
+    );
+};
