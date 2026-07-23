@@ -36,6 +36,36 @@ function Dashboard() {
     const [tipoModal, setTipoModal] = useState(null);
     const [datoModal, setDatoModal] = useState({});
 
+    const defaultsModal = {
+        pedido: {
+            usuario_id: "",
+            total: "0",
+            estado: "Pendiente",
+            direccion: "Recoger en tienda",
+            prioridad_int: "0",
+            recargo_float: "0",
+            canal_char: "WEB"
+        },
+        detalle: {
+            pedido_id: "",
+            producto_id: "",
+            cantidad: "1",
+            precio: "0",
+            lote_int: "0",
+            impuesto_float: "0",
+            marca_char: "PP-BASE"
+        },
+        compra: {
+            pedido_id: "",
+            usuario_id: "",
+            correo: "",
+            direccion: "",
+            total: "0",
+            estado: "Pendiente",
+            correo_enviado: 0
+        }
+    };
+
     const cargarDashboard = async () => {
         try {
             setMensaje("");
@@ -66,15 +96,21 @@ function Dashboard() {
     };
 
     useEffect(() => {
-        cargarDashboard();
+        const initialLoadId = setTimeout(() => {
+            cargarDashboard();
+        }, 0);
         const intervalId = setInterval(cargarDashboard, 15000);
-        return () => clearInterval(intervalId);
+        return () => {
+            clearTimeout(initialLoadId);
+            clearInterval(intervalId);
+        };
     }, []);
 
     const abrirModal = (tipo, modo, dato = {}) => {
         setTipoModal(tipo);
         setModoModal(modo);
-        setDatoModal(dato);
+        const base = modo === "crear" ? (defaultsModal[tipo] || {}) : {};
+        setDatoModal({ ...base, ...dato });
         setModalVisible(true);
     };
 
@@ -98,10 +134,25 @@ function Dashboard() {
                 else await api.put(`/auth/usuarios/${datoModal.id}`, datoModal);
                 setMensaje("Usuario guardado.");
             } else if (tipoModal === "pedido") {
-                await api.put(`/pedidos/admin/${datoModal.id}/tipos`, datoModal);
+                if (modoModal === "crear") {
+                    await api.post("/pedidos/admin", datoModal);
+                } else {
+                    await api.put(`/pedidos/admin/${datoModal.id}`, datoModal);
+                }
                 setMensaje("Pedido guardado.");
+            } else if (tipoModal === "detalle") {
+                if (modoModal === "crear") {
+                    await api.post("/pedidos/admin/detalles", datoModal);
+                } else {
+                    await api.put(`/pedidos/admin/detalles/${datoModal.id}`, datoModal);
+                }
+                setMensaje("Detalle guardado.");
             } else if (tipoModal === "compra") {
-                await api.put(`/pedidos/admin/compras/${datoModal.id}`, datoModal);
+                if (modoModal === "crear") {
+                    await api.post("/pedidos/admin/compras", datoModal);
+                } else {
+                    await api.put(`/pedidos/admin/compras/${datoModal.id}`, datoModal);
+                }
                 setMensaje("Compra guardada.");
             }
             cerrarModal();
@@ -133,7 +184,6 @@ function Dashboard() {
     const totalProductosAnim = useCountUp(Number(stats.totalProductos || 0));
     const pendientesAnim = useCountUp(pedidos.filter(p => String(p.estado).toLowerCase() === "pendiente").length);
     const usuariosAnim = useCountUp(Number(stats.totalUsuarios || 0));
-    const pedidosTotalesAnim = useCountUp(Number(stats.totalPedidos || 0));
     const ventasTotalesAnim = useCountUp(Math.round(Number(stats.ventasTotales || 0)));
 
     const textoBusqueda = filtroTexto.trim().toLowerCase();
@@ -162,6 +212,9 @@ function Dashboard() {
                         <button className="button-primary" onClick={() => abrirModal("producto", "crear")}>➕ Producto</button>
                         <button className="button-secondary" onClick={() => abrirModal("categoria", "crear")}>➕ Categoría</button>
                         <button className="button-secondary" onClick={() => abrirModal("usuario", "crear")}>➕ Usuario</button>
+                        <button className="button-secondary" onClick={() => abrirModal("pedido", "crear")}>➕ Pedido</button>
+                        <button className="button-secondary" onClick={() => abrirModal("detalle", "crear")}>➕ Detalle</button>
+                        <button className="button-secondary" onClick={() => abrirModal("compra", "crear")}>➕ Compra</button>
                     </div>
                 </div>
 
@@ -248,6 +301,7 @@ function Dashboard() {
                                     <thead><tr><th>ID</th><th>Pedido</th><th>Producto</th><th>Cantidad</th><th>Acciones</th></tr></thead>
                                     <tbody>{detallesFiltrados.map(d => (
                                         <tr key={d.id}><td>#{d.id}</td><td>#{d.pedido_id}</td><td>{d.producto_nombre}</td><td>{Number(d.cantidad || 0)}</td><td>
+                                            <button className="button-secondary" onClick={() => abrirModal("detalle", "editar", d)}>Editar</button>
                                             <button className="button-danger" onClick={() => eliminar("detalle", d.id, `Detalle #${d.id}`)}>Eliminar</button>
                                         </td></tr>
                                     ))}</tbody>
@@ -310,17 +364,41 @@ function Dashboard() {
 
                             {tipoModal === "pedido" && (
                                 <>
+                                    {modoModal === "crear" && <input type="number" placeholder="ID usuario" value={datoModal.usuario_id || ""} onChange={(e) => setDatoModal({...datoModal, usuario_id: e.target.value})} />}
+                                    <input type="number" placeholder="Total" value={datoModal.total || ""} onChange={(e) => setDatoModal({...datoModal, total: e.target.value})} />
+                                    <input placeholder="Dirección" value={datoModal.direccion || ""} onChange={(e) => setDatoModal({...datoModal, direccion: e.target.value})} />
                                     <input type="number" placeholder="Prioridad" value={datoModal.prioridad_int || ""} onChange={(e) => setDatoModal({...datoModal, prioridad_int: e.target.value})} />
+                                    <input type="number" placeholder="Recargo" value={datoModal.recargo_float || ""} onChange={(e) => setDatoModal({...datoModal, recargo_float: e.target.value})} />
+                                    <input placeholder="Canal (WEB/TEL)" value={datoModal.canal_char || ""} onChange={(e) => setDatoModal({...datoModal, canal_char: e.target.value})} />
                                     <input placeholder="Estado" value={datoModal.estado || ""} onChange={(e) => setDatoModal({...datoModal, estado: e.target.value})} />
+                                </>
+                            )}
+
+                            {tipoModal === "detalle" && (
+                                <>
+                                    {modoModal === "crear" && <input type="number" placeholder="ID pedido" value={datoModal.pedido_id || ""} onChange={(e) => setDatoModal({...datoModal, pedido_id: e.target.value})} />}
+                                    {modoModal === "crear" && <input type="number" placeholder="ID producto" value={datoModal.producto_id || ""} onChange={(e) => setDatoModal({...datoModal, producto_id: e.target.value})} />}
+                                    <input type="number" placeholder="Cantidad" value={datoModal.cantidad || ""} onChange={(e) => setDatoModal({...datoModal, cantidad: e.target.value})} />
+                                    <input type="number" placeholder="Precio" value={datoModal.precio || ""} onChange={(e) => setDatoModal({...datoModal, precio: e.target.value})} />
+                                    <input type="number" placeholder="Lote" value={datoModal.lote_int || ""} onChange={(e) => setDatoModal({...datoModal, lote_int: e.target.value})} />
+                                    <input type="number" placeholder="Impuesto" value={datoModal.impuesto_float || ""} onChange={(e) => setDatoModal({...datoModal, impuesto_float: e.target.value})} />
+                                    <input placeholder="Marca" value={datoModal.marca_char || ""} onChange={(e) => setDatoModal({...datoModal, marca_char: e.target.value})} />
                                 </>
                             )}
 
                             {tipoModal === "compra" && (
                                 <>
+                                    {modoModal === "crear" && <input type="number" placeholder="ID pedido" value={datoModal.pedido_id || ""} onChange={(e) => setDatoModal({...datoModal, pedido_id: e.target.value})} />}
+                                    <input type="number" placeholder="ID usuario (0 invitado)" value={datoModal.usuario_id || ""} onChange={(e) => setDatoModal({...datoModal, usuario_id: e.target.value})} />
                                     <input type="email" placeholder="Correo" value={datoModal.correo || ""} onChange={(e) => setDatoModal({...datoModal, correo: e.target.value})} />
+                                    <input placeholder="Dirección" value={datoModal.direccion || ""} onChange={(e) => setDatoModal({...datoModal, direccion: e.target.value})} />
                                     <input type="number" placeholder="Total" value={datoModal.total || ""} onChange={(e) => setDatoModal({...datoModal, total: e.target.value})} />
                                     <select value={datoModal.estado || ""} onChange={(e) => setDatoModal({...datoModal, estado: e.target.value})}>
                                         <option value="">Seleccionar</option><option value="Pendiente">Pendiente</option><option value="Enviado">Enviado</option><option value="Entregado">Entregado</option>
+                                    </select>
+                                    <select value={Number(datoModal.correo_enviado || 0)} onChange={(e) => setDatoModal({...datoModal, correo_enviado: Number(e.target.value)})}>
+                                        <option value={0}>Correo pendiente</option>
+                                        <option value={1}>Correo enviado</option>
                                     </select>
                                 </>
                             )}

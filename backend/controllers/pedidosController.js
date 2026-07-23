@@ -396,18 +396,230 @@ exports.obtenerPedidosAdmin = (req, res) => {
 
 exports.actualizarEstado = (req, res) => {
     const { id } = req.params;
-    const { estado } = req.body;
+    const pedidoId = Number(id);
+    const {
+        estado,
+        total,
+        direccion,
+        prioridad_int,
+        recargo_float,
+        canal_char
+    } = req.body;
 
-    conexion.query(
-        "UPDATE pedidos SET estado = ? WHERE id = ?",
-        [estado || "Pendiente", id],
-        (error) => {
-            if (error) {
-                return res.status(500).json(error);
-            }
-            res.json({ mensaje: "Estado del pedido actualizado." });
+    if (!Number.isFinite(pedidoId) || pedidoId <= 0) {
+        return res.status(400).json({ mensaje: "El ID del pedido no es válido." });
+    }
+
+    const campos = [];
+    const valores = [];
+
+    if (typeof estado !== "undefined") {
+        const estadoLimpio = String(estado || "").trim() || "Pendiente";
+        if (estadoLimpio.length > 50) {
+            return res.status(400).json({ mensaje: "El estado no puede superar 50 caracteres." });
         }
-    );
+        campos.push("estado = ?");
+        valores.push(estadoLimpio);
+    }
+
+    if (typeof total !== "undefined") {
+        const totalNumero = Number(total);
+        if (!Number.isFinite(totalNumero) || totalNumero < 0) {
+            return res.status(400).json({ mensaje: "El total debe ser mayor o igual a 0." });
+        }
+        campos.push("total = ?");
+        valores.push(totalNumero);
+    }
+
+    if (typeof direccion !== "undefined") {
+        const direccionTexto = String(direccion || "").trim() || "Recoger en tienda";
+        if (direccionTexto.length > 255) {
+            return res.status(400).json({ mensaje: "La dirección no puede superar 255 caracteres." });
+        }
+        campos.push("direccion = ?");
+        valores.push(direccionTexto);
+    }
+
+    if (typeof prioridad_int !== "undefined") {
+        const prioridad = Number(prioridad_int);
+        if (!Number.isFinite(prioridad) || prioridad < 0) {
+            return res.status(400).json({ mensaje: "prioridad_int debe ser mayor o igual a 0." });
+        }
+        campos.push("prioridad_int = ?");
+        valores.push(prioridad);
+    }
+
+    if (typeof recargo_float !== "undefined") {
+        const recargo = Number(recargo_float);
+        if (!Number.isFinite(recargo) || recargo < 0) {
+            return res.status(400).json({ mensaje: "recargo_float debe ser mayor o igual a 0." });
+        }
+        campos.push("recargo_float = ?");
+        valores.push(recargo);
+    }
+
+    if (typeof canal_char !== "undefined") {
+        const canal = String(canal_char || "WEB").trim() || "WEB";
+        if (canal.length > 10) {
+            return res.status(400).json({ mensaje: "canal_char no puede superar 10 caracteres." });
+        }
+        campos.push("canal_char = ?");
+        valores.push(canal);
+    }
+
+    if (campos.length === 0) {
+        return res.status(400).json({ mensaje: "No hay datos para actualizar." });
+    }
+
+    conexion.query("SHOW COLUMNS FROM pedidos", (schemaError, columnasPedidos) => {
+        if (schemaError) {
+            return res.status(500).json(schemaError);
+        }
+
+        const disponibles = new Set(
+            Array.isArray(columnasPedidos)
+                ? columnasPedidos.map((columna) => String(columna.Field || "").toLowerCase())
+                : []
+        );
+
+        const pares = campos
+            .map((campo, index) => ({
+                campo,
+                valor: valores[index],
+                nombre: String(campo).split("=")[0].trim().toLowerCase()
+            }))
+            .filter((item) => disponibles.has(item.nombre));
+
+        if (pares.length === 0) {
+            return res.status(400).json({ mensaje: "No hay campos compatibles para actualizar en la tabla pedidos." });
+        }
+
+        const camposCompatibles = pares.map((item) => item.campo);
+        const valoresCompatibles = pares.map((item) => item.valor);
+        valoresCompatibles.push(pedidoId);
+
+        conexion.query(
+            `UPDATE pedidos SET ${camposCompatibles.join(", ")} WHERE id = ?`,
+            valoresCompatibles,
+            (error, resultado) => {
+                if (error) {
+                    return res.status(500).json(error);
+                }
+
+                if (resultado.affectedRows === 0) {
+                    return res.status(404).json({ mensaje: "Pedido no encontrado." });
+                }
+
+                res.json({ mensaje: "Pedido actualizado correctamente." });
+            }
+        );
+    });
+};
+
+exports.crearPedidoAdmin = (req, res) => {
+    const {
+        usuario_id,
+        total,
+        estado,
+        direccion,
+        prioridad_int,
+        recargo_float,
+        canal_char
+    } = req.body;
+
+    const usuarioId = Number(usuario_id);
+    const totalNumero = Number(total);
+    const estadoLimpio = String(estado || "Pendiente").trim() || "Pendiente";
+    const direccionTexto = String(direccion || "Recoger en tienda").trim() || "Recoger en tienda";
+    const prioridad = Number(prioridad_int || 0);
+    const recargo = Number(recargo_float || 0);
+    const canal = String(canal_char || "WEB").trim() || "WEB";
+
+    if (!Number.isFinite(usuarioId) || usuarioId <= 0) {
+        return res.status(400).json({ mensaje: "usuario_id debe ser mayor a 0." });
+    }
+
+    if (!Number.isFinite(totalNumero) || totalNumero < 0) {
+        return res.status(400).json({ mensaje: "El total debe ser mayor o igual a 0." });
+    }
+
+    if (estadoLimpio.length > 50) {
+        return res.status(400).json({ mensaje: "El estado no puede superar 50 caracteres." });
+    }
+
+    if (direccionTexto.length > 255) {
+        return res.status(400).json({ mensaje: "La dirección no puede superar 255 caracteres." });
+    }
+
+    if (!Number.isFinite(prioridad) || prioridad < 0) {
+        return res.status(400).json({ mensaje: "prioridad_int debe ser mayor o igual a 0." });
+    }
+
+    if (!Number.isFinite(recargo) || recargo < 0) {
+        return res.status(400).json({ mensaje: "recargo_float debe ser mayor o igual a 0." });
+    }
+
+    if (canal.length > 10) {
+        return res.status(400).json({ mensaje: "canal_char no puede superar 10 caracteres." });
+    }
+
+    conexion.query("SELECT id FROM usuarios WHERE id = ? LIMIT 1", [usuarioId], (usuarioError, usuariosRows) => {
+        if (usuarioError) {
+            return res.status(500).json(usuarioError);
+        }
+
+        if (!Array.isArray(usuariosRows) || usuariosRows.length === 0) {
+            return res.status(400).json({ mensaje: "El usuario indicado no existe." });
+        }
+
+        conexion.query("SHOW COLUMNS FROM pedidos", (schemaError, columnasPedidos) => {
+            if (schemaError) {
+                return res.status(500).json(schemaError);
+            }
+
+            const disponibles = new Set(
+                Array.isArray(columnasPedidos)
+                    ? columnasPedidos.map((columna) => String(columna.Field || "").toLowerCase())
+                    : []
+            );
+
+            const columnas = ["usuario_id", "total", "estado"];
+            const valores = [usuarioId, totalNumero, estadoLimpio];
+
+            if (disponibles.has("direccion")) {
+                columnas.push("direccion");
+                valores.push(direccionTexto);
+            }
+
+            if (disponibles.has("prioridad_int")) {
+                columnas.push("prioridad_int");
+                valores.push(prioridad);
+            }
+
+            if (disponibles.has("recargo_float")) {
+                columnas.push("recargo_float");
+                valores.push(recargo);
+            }
+
+            if (disponibles.has("canal_char")) {
+                columnas.push("canal_char");
+                valores.push(canal);
+            }
+
+            const sql = `INSERT INTO pedidos(${columnas.join(", ")}) VALUES (${columnas.map(() => "?").join(", ")})`;
+
+            conexion.query(sql, valores, (insertError, resultado) => {
+                if (insertError) {
+                    return res.status(500).json(insertError);
+                }
+
+                res.status(201).json({
+                    mensaje: "Pedido creado correctamente.",
+                    pedidoId: resultado.insertId
+                });
+            });
+        });
+    });
 };
 
 exports.actualizarTiposPedido = (req, res) => {
@@ -460,6 +672,211 @@ exports.obtenerPedidosProductosAdmin = (req, res) => {
     });
 };
 
+const recalcularTotalPedido = (pedidoId, callback) => {
+    const pedidoNumero = Number(pedidoId);
+    if (!Number.isFinite(pedidoNumero) || pedidoNumero <= 0) {
+        return callback(null);
+    }
+
+    conexion.query(
+        "SELECT IFNULL(SUM(cantidad * precio), 0) AS total FROM pedidos_productos WHERE pedido_id = ?",
+        [pedidoNumero],
+        (sumError, sumRows) => {
+            if (sumError) {
+                return callback(sumError);
+            }
+
+            const totalRecalculado = Number(sumRows?.[0]?.total || 0);
+            conexion.query("UPDATE pedidos SET total = ? WHERE id = ?", [totalRecalculado, pedidoNumero], (updateError) => {
+                callback(updateError || null);
+            });
+        }
+    );
+};
+
+exports.crearDetallePedidoAdmin = (req, res) => {
+    const {
+        pedido_id,
+        producto_id,
+        cantidad,
+        precio,
+        lote_int,
+        impuesto_float,
+        marca_char
+    } = req.body;
+
+    const pedidoId = Number(pedido_id);
+    const productoId = Number(producto_id);
+    const cantidadNumero = Number(cantidad);
+    const precioNumero = Number(precio);
+    const lote = Number(lote_int || 0);
+    const impuesto = Number(impuesto_float || 0);
+    const marca = String(marca_char || "PP-BASE").trim() || "PP-BASE";
+
+    if (!Number.isFinite(pedidoId) || pedidoId <= 0) {
+        return res.status(400).json({ mensaje: "pedido_id debe ser mayor a 0." });
+    }
+
+    if (!Number.isFinite(productoId) || productoId <= 0) {
+        return res.status(400).json({ mensaje: "producto_id debe ser mayor a 0." });
+    }
+
+    if (!Number.isFinite(cantidadNumero) || cantidadNumero <= 0) {
+        return res.status(400).json({ mensaje: "La cantidad debe ser mayor a 0." });
+    }
+
+    if (!Number.isFinite(precioNumero) || precioNumero < 0) {
+        return res.status(400).json({ mensaje: "El precio debe ser mayor o igual a 0." });
+    }
+
+    if (!Number.isFinite(lote) || lote < 0) {
+        return res.status(400).json({ mensaje: "lote_int debe ser mayor o igual a 0." });
+    }
+
+    if (!Number.isFinite(impuesto) || impuesto < 0) {
+        return res.status(400).json({ mensaje: "impuesto_float debe ser mayor o igual a 0." });
+    }
+
+    if (marca.length > 10) {
+        return res.status(400).json({ mensaje: "marca_char no puede superar 10 caracteres." });
+    }
+
+    conexion.query("SELECT id FROM pedidos WHERE id = ? LIMIT 1", [pedidoId], (pedidoError, pedidoRows) => {
+        if (pedidoError) {
+            return res.status(500).json(pedidoError);
+        }
+
+        if (!Array.isArray(pedidoRows) || pedidoRows.length === 0) {
+            return res.status(400).json({ mensaje: "El pedido indicado no existe." });
+        }
+
+        conexion.query("SELECT id FROM productos WHERE id = ? LIMIT 1", [productoId], (productoError, productoRows) => {
+            if (productoError) {
+                return res.status(500).json(productoError);
+            }
+
+            if (!Array.isArray(productoRows) || productoRows.length === 0) {
+                return res.status(400).json({ mensaje: "El producto indicado no existe." });
+            }
+
+            const sql = "INSERT INTO pedidos_productos(pedido_id, producto_id, cantidad, precio, lote_int, impuesto_float, marca_char) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            const valores = [pedidoId, productoId, cantidadNumero, precioNumero, lote, impuesto, marca];
+
+            conexion.query(sql, valores, (insertError, resultado) => {
+                if (insertError) {
+                    return res.status(500).json(insertError);
+                }
+
+                recalcularTotalPedido(pedidoId, (recalculoError) => {
+                    if (recalculoError) {
+                        return res.status(500).json(recalculoError);
+                    }
+
+                    res.status(201).json({
+                        mensaje: "Detalle de pedido creado correctamente.",
+                        detalleId: resultado.insertId
+                    });
+                });
+            });
+        });
+    });
+};
+
+exports.actualizarDetallePedidoAdmin = (req, res) => {
+    const detalleId = Number(req.params.id);
+    const {
+        cantidad,
+        precio,
+        lote_int,
+        impuesto_float,
+        marca_char
+    } = req.body;
+
+    if (!Number.isFinite(detalleId) || detalleId <= 0) {
+        return res.status(400).json({ mensaje: "ID de detalle no válido." });
+    }
+
+    const campos = [];
+    const valores = [];
+
+    if (typeof cantidad !== "undefined") {
+        const cantidadNumero = Number(cantidad);
+        if (!Number.isFinite(cantidadNumero) || cantidadNumero <= 0) {
+            return res.status(400).json({ mensaje: "La cantidad debe ser mayor a 0." });
+        }
+        campos.push("cantidad = ?");
+        valores.push(cantidadNumero);
+    }
+
+    if (typeof precio !== "undefined") {
+        const precioNumero = Number(precio);
+        if (!Number.isFinite(precioNumero) || precioNumero < 0) {
+            return res.status(400).json({ mensaje: "El precio debe ser mayor o igual a 0." });
+        }
+        campos.push("precio = ?");
+        valores.push(precioNumero);
+    }
+
+    if (typeof lote_int !== "undefined") {
+        const lote = Number(lote_int);
+        if (!Number.isFinite(lote) || lote < 0) {
+            return res.status(400).json({ mensaje: "lote_int debe ser mayor o igual a 0." });
+        }
+        campos.push("lote_int = ?");
+        valores.push(lote);
+    }
+
+    if (typeof impuesto_float !== "undefined") {
+        const impuesto = Number(impuesto_float);
+        if (!Number.isFinite(impuesto) || impuesto < 0) {
+            return res.status(400).json({ mensaje: "impuesto_float debe ser mayor o igual a 0." });
+        }
+        campos.push("impuesto_float = ?");
+        valores.push(impuesto);
+    }
+
+    if (typeof marca_char !== "undefined") {
+        const marca = String(marca_char || "PP-BASE").trim() || "PP-BASE";
+        if (marca.length > 10) {
+            return res.status(400).json({ mensaje: "marca_char no puede superar 10 caracteres." });
+        }
+        campos.push("marca_char = ?");
+        valores.push(marca);
+    }
+
+    if (campos.length === 0) {
+        return res.status(400).json({ mensaje: "No hay datos para actualizar." });
+    }
+
+    valores.push(detalleId);
+    const sql = `UPDATE pedidos_productos SET ${campos.join(", ")} WHERE id = ?`;
+
+    conexion.query(sql, valores, (updateError, resultado) => {
+        if (updateError) {
+            return res.status(500).json(updateError);
+        }
+
+        if (resultado.affectedRows === 0) {
+            return res.status(404).json({ mensaje: "Detalle no encontrado." });
+        }
+
+        conexion.query("SELECT pedido_id FROM pedidos_productos WHERE id = ?", [detalleId], (pedidoError, rows) => {
+            if (pedidoError) {
+                return res.status(500).json(pedidoError);
+            }
+
+            const pedidoId = rows?.[0]?.pedido_id;
+            recalcularTotalPedido(pedidoId, (recalculoError) => {
+                if (recalculoError) {
+                    return res.status(500).json(recalculoError);
+                }
+
+                res.json({ mensaje: "Detalle de pedido actualizado correctamente." });
+            });
+        });
+    });
+};
+
 exports.actualizarTiposPedidoProducto = (req, res) => {
     const { id } = req.params;
     const { lote_int, impuesto_float, marca_char } = req.body;
@@ -495,10 +912,10 @@ exports.actualizarTiposPedidoProducto = (req, res) => {
 exports.obtenerComprasAdmin = (req, res) => {
     const sql = `SELECT c.id, c.pedido_id, c.usuario_id, c.correo, c.direccion, c.total, c.estado,
         c.correo_enviado, c.created_at, c.updated_at,
-        u.nombre AS usuario_nombre,
-        u.correo AS usuario_correo
+        COALESCE(u.nombre, 'Invitado') AS usuario_nombre,
+        COALESCE(u.correo, c.correo) AS usuario_correo
     FROM compras c
-    JOIN usuarios u ON c.usuario_id = u.id
+    LEFT JOIN usuarios u ON c.usuario_id = u.id
     ORDER BY c.id DESC`;
 
     conexion.query(sql, (error, rows) => {
@@ -506,6 +923,105 @@ exports.obtenerComprasAdmin = (req, res) => {
             return res.status(500).json(error);
         }
         res.json(rows || []);
+    });
+};
+
+exports.crearCompraAdmin = (req, res) => {
+    const {
+        pedido_id,
+        usuario_id,
+        correo,
+        direccion,
+        total,
+        estado,
+        correo_enviado
+    } = req.body;
+
+    const pedidoId = Number(pedido_id);
+    const usuarioId = Number(usuario_id);
+    const correoTexto = String(correo || "").trim();
+    const direccionTexto = String(direccion || "").trim();
+    const totalNumero = Number(total);
+    const estadoTexto = String(estado || "Pendiente").trim() || "Pendiente";
+    const correoEnviadoNumero = Number(Boolean(correo_enviado));
+
+    if (!Number.isFinite(pedidoId) || pedidoId <= 0) {
+        return res.status(400).json({ mensaje: "pedido_id debe ser mayor a 0." });
+    }
+
+    if (!Number.isFinite(usuarioId) || usuarioId < 0) {
+        return res.status(400).json({ mensaje: "usuario_id debe ser mayor o igual a 0." });
+    }
+
+    if (!correoTexto) {
+        return res.status(400).json({ mensaje: "El correo es obligatorio." });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(correoTexto)) {
+        return res.status(400).json({ mensaje: "El correo ingresado no es válido." });
+    }
+
+    if (!direccionTexto) {
+        return res.status(400).json({ mensaje: "La dirección es obligatoria." });
+    }
+
+    if (!Number.isFinite(totalNumero) || totalNumero < 0) {
+        return res.status(400).json({ mensaje: "El total debe ser mayor o igual a 0." });
+    }
+
+    if (estadoTexto.length > 50) {
+        return res.status(400).json({ mensaje: "El estado no puede superar 50 caracteres." });
+    }
+
+    conexion.query("SELECT id FROM pedidos WHERE id = ? LIMIT 1", [pedidoId], (pedidoError, pedidoRows) => {
+        if (pedidoError) {
+            return res.status(500).json(pedidoError);
+        }
+
+        if (!Array.isArray(pedidoRows) || pedidoRows.length === 0) {
+            return res.status(400).json({ mensaje: "El pedido indicado no existe." });
+        }
+
+        if (usuarioId === 0) {
+            const sqlInvitado = "INSERT INTO compras(pedido_id, usuario_id, correo, direccion, total, estado, correo_enviado) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            const valoresInvitado = [pedidoId, 0, correoTexto, direccionTexto, totalNumero, estadoTexto, correoEnviadoNumero];
+
+            return conexion.query(sqlInvitado, valoresInvitado, (insertError, resultado) => {
+                if (insertError) {
+                    return res.status(500).json(insertError);
+                }
+
+                res.status(201).json({
+                    mensaje: "Compra creada correctamente.",
+                    compraId: resultado.insertId
+                });
+            });
+        }
+
+        conexion.query("SELECT id FROM usuarios WHERE id = ? LIMIT 1", [usuarioId], (usuarioError, usuarioRows) => {
+            if (usuarioError) {
+                return res.status(500).json(usuarioError);
+            }
+
+            if (!Array.isArray(usuarioRows) || usuarioRows.length === 0) {
+                return res.status(400).json({ mensaje: "El usuario indicado no existe." });
+            }
+
+            const sql = "INSERT INTO compras(pedido_id, usuario_id, correo, direccion, total, estado, correo_enviado) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            const valores = [pedidoId, usuarioId, correoTexto, direccionTexto, totalNumero, estadoTexto, correoEnviadoNumero];
+
+            conexion.query(sql, valores, (insertError, resultado) => {
+                if (insertError) {
+                    return res.status(500).json(insertError);
+                }
+
+                res.status(201).json({
+                    mensaje: "Compra creada correctamente.",
+                    compraId: resultado.insertId
+                });
+            });
+        });
     });
 };
 
@@ -635,10 +1151,30 @@ exports.eliminarDetallePedidoAdmin = (req, res) => {
     if (!Number.isFinite(detalleId) || detalleId <= 0) {
         return res.status(400).json({ mensaje: "ID de detalle no válido." });
     }
-    conexion.query("DELETE FROM pedidos_productos WHERE id = ?", [detalleId], (error, resultado) => {
-        if (error) return res.status(500).json(error);
-        if (resultado.affectedRows === 0) return res.status(404).json({ mensaje: "Detalle no encontrado." });
-        res.json({ mensaje: "Detalle eliminado correctamente." });
+    conexion.query("SELECT pedido_id FROM pedidos_productos WHERE id = ?", [detalleId], (findError, rows) => {
+        if (findError) {
+            return res.status(500).json(findError);
+        }
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return res.status(404).json({ mensaje: "Detalle no encontrado." });
+        }
+
+        const pedidoId = rows[0].pedido_id;
+
+        conexion.query("DELETE FROM pedidos_productos WHERE id = ?", [detalleId], (error) => {
+            if (error) {
+                return res.status(500).json(error);
+            }
+
+            recalcularTotalPedido(pedidoId, (recalculoError) => {
+                if (recalculoError) {
+                    return res.status(500).json(recalculoError);
+                }
+
+                res.json({ mensaje: "Detalle eliminado correctamente." });
+            });
+        });
     });
 };
 

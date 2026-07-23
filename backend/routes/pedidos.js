@@ -5,10 +5,14 @@ const { proteger } = require("../middlewares/auth");
 
 router.post("/crear", proteger, pedidosController.crearPedido);
 router.post("/crear-sin-auth", pedidosController.crearPedidoSinAuth);
+router.post("/admin", pedidosController.crearPedidoAdmin);
+router.post("/admin/detalles", pedidosController.crearDetallePedidoAdmin);
+router.post("/admin/compras", pedidosController.crearCompraAdmin);
 router.get("/usuario", proteger, pedidosController.obtenerPedidosUsuario);
 router.get("/admin", pedidosController.obtenerPedidosAdmin);
 router.get("/admin/detalles", pedidosController.obtenerPedidosProductosAdmin);
 router.get("/admin/compras", pedidosController.obtenerComprasAdmin);
+router.put("/admin/detalles/:id", pedidosController.actualizarDetallePedidoAdmin);
 router.put("/admin/detalles/:id/tipos", pedidosController.actualizarTiposPedidoProducto);
 router.put("/admin/compras/:id", pedidosController.actualizarCompraAdmin);
 router.put("/admin/:id/tipos", pedidosController.actualizarTiposPedido);
