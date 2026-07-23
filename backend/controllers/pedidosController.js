@@ -232,20 +232,23 @@ exports.crearPedido = (req, res) => {
 
                                 const actualizarStock = (index) => {
                                     if (index >= idsProductos.length) {
-                                            const nombreUsuario = req.user.nombre || "cliente";
-                                            const detallesCorreo = itemsNormalizados
-                                                .map((item) => {
-                                                    const producto = productosMap.get(item.id);
-                                                    const precioProducto = Number(producto?.precio || 0);
-                                                    return `<li>${producto?.nombre || item.id} x ${item.cantidad} - $${(precioProducto * item.cantidad).toFixed(2)}</li>`;
-                                                })
-                                                .join("");
+                                        const finalizarCompra = async () => {
+                                            try {
+                                                const nombreUsuario = req.user.nombre || "cliente";
+                                                const detallesCorreo = itemsNormalizados
+                                                    .map((item) => {
+                                                        const producto = productosMap.get(item.id);
+                                                        const precioProducto = Number(producto?.precio || 0);
+                                                        return `<li>${producto?.nombre || item.id} x ${item.cantidad} - $${(precioProducto * item.cantidad).toFixed(2)}</li>`;
+                                                    })
+                                                    .join("");
 
-                                            enviarCorreo(
-                                                correoDestino,
-                                                "Compra realizada con éxito - Tinta Retirada",
-                                                `<h2>Pedido #${pedidoId} confirmado</h2><p>Hola ${nombreUsuario},</p><p>Tu compra fue realizada con éxito. Hemos registrado tu pedido con un total de <strong>$${pedidoTotalCalculado.toFixed(2)}</strong>.</p><p>Detalle:</p><ul>${detallesCorreo}</ul><p>Correo de confirmación enviado a: <strong>${correoDestino}</strong></p><p>Gracias por comprar en Tinta Retirada.</p>`
-                                            ).then((correoEnviado) => {
+                                                const correoEnviado = await enviarCorreo(
+                                                    correoDestino,
+                                                    "Compra realizada con éxito - Tinta Retirada",
+                                                    `<h2>Pedido #${pedidoId} confirmado</h2><p>Hola ${nombreUsuario},</p><p>Tu compra fue realizada con éxito. Hemos registrado tu pedido con un total de <strong>$${pedidoTotalCalculado.toFixed(2)}</strong>.</p><p>Detalle:</p><ul>${detallesCorreo}</ul><p>Correo de confirmación enviado a: <strong>${correoDestino}</strong></p><p>Gracias por comprar en Tinta Retirada.</p>`
+                                                );
+
                                                 if (!correoEnviado) {
                                                     return rollback(
                                                         { mensaje: "No se pudo enviar el correo de confirmación. Intenta nuevamente en unos minutos." },
@@ -276,14 +279,17 @@ exports.crearPedido = (req, res) => {
                                                         });
                                                     }
                                                 );
-                                            }).catch((mailError) => {
-                                                console.error("Error enviando confirmación de compra:", mailError);
+                                            } catch (finalizarError) {
+                                                console.error("Error al finalizar compra:", finalizarError);
                                                 return rollback(
-                                                    { mensaje: "No se pudo enviar el correo de confirmación. Intenta nuevamente en unos minutos." },
-                                                    502
+                                                    { mensaje: "Error inesperado al finalizar el pedido. Intenta nuevamente." },
+                                                    500
                                                 );
-                                            });
-                                            return;
+                                            }
+                                        };
+
+                                        finalizarCompra();
+                                        return;
                                     }
 
                                     const productoId = idsProductos[index];
