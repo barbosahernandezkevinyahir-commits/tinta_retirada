@@ -12,6 +12,24 @@ const conexion = mysql.createConnection({
     charset: "utf8mb4"
 });
 
+// Compatibilidad defensiva: permite usar conexion.query con callback o con await.
+const queryOriginal = conexion.query.bind(conexion);
+conexion.query = (...args) => {
+    const ultimoArg = args[args.length - 1];
+    if (typeof ultimoArg === "function") {
+        return queryOriginal(...args);
+    }
+
+    return new Promise((resolve, reject) => {
+        queryOriginal(...args, (error, resultados, campos) => {
+            if (error) {
+                return reject(error);
+            }
+            resolve([resultados, campos]);
+        });
+    });
+};
+
 const crearTablasIniciales = (callback) => {
     const queries = [
         `CREATE TABLE IF NOT EXISTS usuarios (
