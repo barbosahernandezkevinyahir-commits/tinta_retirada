@@ -115,6 +115,7 @@ export function CarritoProvider({ children }) {
 
     const vaciarCarrito = () => {
         setCarrito([]);
+        localStorage.removeItem("carrito");
     };
 
     const total = carrito.reduce(

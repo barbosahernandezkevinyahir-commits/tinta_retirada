@@ -20,17 +20,22 @@ const crearTransport = () => {
 const enviarCorreo = async (destinatario, asunto, html) => {
     const transport = crearTransport();
     if (!transport) {
-        console.log("No hay configuración de correo válida. Mensaje para:", destinatario);
-        console.log(html);
-        return;
+        console.log("No hay configuración de correo válida para enviar confirmaciones.");
+        return false;
     }
 
-    await transport.sendMail({
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-        to: destinatario,
-        subject: asunto,
-        html
-    });
+    try {
+        await transport.sendMail({
+            from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+            to: destinatario,
+            subject: asunto,
+            html
+        });
+        return true;
+    } catch (error) {
+        console.error("Error enviando correo de confirmación:", error);
+        return false;
+    }
 };
 
 const obtenerColumnaFechaPedidos = (callback) => {
@@ -218,11 +223,6 @@ exports.crearPedido = (req, res) => {
 
                                 const actualizarStock = (index) => {
                                     if (index >= idsProductos.length) {
-                                        return conexion.commit(async (commitError) => {
-                                            if (commitError) {
-                                                return rollback(commitError);
-                                            }
-
                                             const nombreUsuario = req.user.nombre || "cliente";
                                             const detallesCorreo = itemsNormalizados
                                                 .map((item) => {
@@ -232,36 +232,49 @@ exports.crearPedido = (req, res) => {
                                                 })
                                                 .join("");
 
-                                            let correoEnviado = false;
-                                            try {
-                                                await enviarCorreo(
-                                                    correoDestino,
-                                                    "Compra realizada con éxito - Tinta Retirada",
-                                                    `<h2>Pedido #${pedidoId} confirmado</h2><p>Hola ${nombreUsuario},</p><p>Tu compra fue realizada con éxito. Hemos registrado tu pedido con un total de <strong>$${pedidoTotalCalculado.toFixed(2)}</strong>.</p><p>Detalle:</p><ul>${detallesCorreo}</ul><p>Correo de confirmación enviado a: <strong>${correoDestino}</strong></p><p>Gracias por comprar en Tinta Retirada.</p>`
-                                                );
-                                                correoEnviado = true;
-                                            } catch (mailError) {
-                                                console.error("Error enviando confirmación de compra:", mailError);
-                                            }
-
-                                            conexion.query(
-                                                "UPDATE compras SET correo_enviado = ?, estado = ? WHERE id = ?",
-                                                [correoEnviado ? 1 : 0, correoEnviado ? "Confirmada" : "Pendiente", compraId],
-                                                (updateCompraError) => {
-                                                    if (updateCompraError) {
-                                                        console.error("No se pudo actualizar el estado del correo de la compra:", updateCompraError);
-                                                    }
+                                            enviarCorreo(
+                                                correoDestino,
+                                                "Compra realizada con éxito - Tinta Retirada",
+                                                `<h2>Pedido #${pedidoId} confirmado</h2><p>Hola ${nombreUsuario},</p><p>Tu compra fue realizada con éxito. Hemos registrado tu pedido con un total de <strong>$${pedidoTotalCalculado.toFixed(2)}</strong>.</p><p>Detalle:</p><ul>${detallesCorreo}</ul><p>Correo de confirmación enviado a: <strong>${correoDestino}</strong></p><p>Gracias por comprar en Tinta Retirada.</p>`
+                                            ).then((correoEnviado) => {
+                                                if (!correoEnviado) {
+                                                    return rollback(
+                                                        { mensaje: "No se pudo enviar el correo de confirmación. Intenta nuevamente en unos minutos." },
+                                                        502
+                                                    );
                                                 }
-                                            );
 
-                                            return res.status(201).json({
-                                                mensaje: "Pedido creado correctamente.",
-                                                pedidoId,
-                                                compraId,
-                                                total: Number(pedidoTotalCalculado.toFixed(2)),
-                                                correoEnviado
+                                                conexion.query(
+                                                    "UPDATE compras SET correo_enviado = 1, estado = ? WHERE id = ?",
+                                                    ["Confirmada", compraId],
+                                                    (updateCompraError) => {
+                                                        if (updateCompraError) {
+                                                            return rollback(updateCompraError);
+                                                        }
+
+                                                        conexion.commit((commitError) => {
+                                                            if (commitError) {
+                                                                return rollback(commitError);
+                                                            }
+
+                                                            return res.status(201).json({
+                                                                mensaje: "Pedido creado correctamente.",
+                                                                pedidoId,
+                                                                compraId,
+                                                                total: Number(pedidoTotalCalculado.toFixed(2)),
+                                                                correoEnviado: true
+                                                            });
+                                                        });
+                                                    }
+                                                );
+                                            }).catch((mailError) => {
+                                                console.error("Error enviando confirmación de compra:", mailError);
+                                                return rollback(
+                                                    { mensaje: "No se pudo enviar el correo de confirmación. Intenta nuevamente en unos minutos." },
+                                                    502
+                                                );
                                             });
-                                        });
+                                            return;
                                     }
 
                                     const productoId = idsProductos[index];
