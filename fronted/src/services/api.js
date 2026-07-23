@@ -1,6 +1,12 @@
 import axios from "axios";
 
-const rawApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const fallbackApiUrl =
+    typeof window !== "undefined" &&
+    !["localhost", "127.0.0.1"].includes(window.location.hostname)
+        ? "https://tintaretirada-production.up.railway.app/api"
+        : "http://localhost:5000/api";
+
+const rawApiUrl = import.meta.env.VITE_API_URL || fallbackApiUrl;
 const baseURL = rawApiUrl.replace(/\/$/, "");
 
 const api = axios.create({
