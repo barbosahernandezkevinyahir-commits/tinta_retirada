@@ -10,6 +10,9 @@ const crearTransport = () => {
         host: process.env.EMAIL_HOST,
         port: Number(process.env.EMAIL_PORT) || 587,
         secure: false,
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
@@ -25,12 +28,18 @@ const enviarCorreo = async (destinatario, asunto, html) => {
     }
 
     try {
-        await transport.sendMail({
+        const envio = transport.sendMail({
             from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
             to: destinatario,
             subject: asunto,
             html
         });
+
+        const timeout = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Tiempo de espera agotado al enviar correo")), 12000);
+        });
+
+        await Promise.race([envio, timeout]);
         return true;
     } catch (error) {
         console.error("Error enviando correo de confirmación:", error);
